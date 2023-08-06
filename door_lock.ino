@@ -2,69 +2,67 @@
 
 
 Servo servo;
-int servoPin = 18; // Change this to the GPIO pin you connected the servo's control signal wire
+int servoPin = 5; // Change this to the GPIO pin you connected the servo's control signal wire
 
-int key_presses[] = {0, 0, 0};
-bool locked = true;
-int lock_password[] = {3, 1, 2};
-int unlock_password[] = {2, 1, 3};
+int key_presses[] = {0, 0, 0, 0, 0};
+int password[] = {0, 0, 0, 0, 0};
+int lock_password[] = {1, 1, 2, 2, 3};
+int unlock_password[] = {3, 2, 1, 1, 3};
+int passwordLength = sizeof(key_presses)/sizeof(key_presses[0]);
 
 void setup() {
   servo.attach(servoPin);
-  servo.write(180);
+  servo.write(90);
 
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(16, INPUT);
-  pinMode(17, INPUT);
-  pinMode(18, INPUT);
+  pinMode(4, INPUT_PULLUP);
+  pinMode(3, INPUT_PULLUP);
+  pinMode(2, INPUT_PULLUP);
   Serial.begin(9600);
 }
 
 // the loop function runs over and over again forever
 void loop() {
-  // if(digitalRead(16) == HIGH)
-  // {
-  //   keyPress(20);
-  // }if(digitalRead(17) == HIGH)
-  // {
-  //   keyPress(22);
-  // }if(digitalRead(18) == HIGH)
-  // {
-  //   keyPress(26);
-  // }
+  if(digitalRead(4) == LOW)
+  {
+    keyPress(4);
+  }if(digitalRead(3) == LOW)
+  {
+    keyPress(3);
+  }if(digitalRead(2) == LOW)
+  {
+    keyPress(2);
+  }
 
-  // if(checkPassword('l'))
-  // {
-  //   Serial.print("lock");
-  //   resetPassword();
-  //   servo.write(0);
-  //   locked = true;
-  // }
-  // if(checkPassword('u'))
-  // {
-  //   Serial.print("unlock");
-  //   resetPassword();
-  //   servo.write(180);
-  //   locked = false;
-  // }
+  if(checkPassword('l'))
+  {
+    Serial.print("lock");
+    resetPassword();
+    servo.write(30);
+  }
+  if(checkPassword('u'))
+  {
+    Serial.print("unlock");
+    resetPassword();
+    servo.write(90);
+  }
 }
 
 bool checkPassword(char p) {
-  int password[] = {0, 0, 0};
   if(p == 'l')
   {
-    for(int i = 0; i < 2; i++)
+    for(int i = 0; i < passwordLength; i++)
     {
       password[i] = lock_password[i];
     }
   }else if(p == 'u')
   {
-    for(int i = 0; i < 2; i++)
+    for(int i = 0; i < passwordLength; i++)
     {
       password[i] = unlock_password[i];
     }
   }
-  for(int i = 0; i < 2; i++)
+  for(int i = 0; i < passwordLength; i++)
   {
     if(key_presses[i] != password[i])
     {
@@ -75,27 +73,28 @@ bool checkPassword(char p) {
 }
 
 void keyPress(int key) {
-  if(key_presses[0] == 0)
+  for(int i = 0; i < passwordLength; i++)
   {
-    key_presses[0] = key_presses[1];
+    key_presses[i] = key_presses[i+1];
   }
-  if(key_presses[1] == 0)
-  {
-    key_presses[1] = key_presses[2];
-  }
+  key_presses[passwordLength-1] = getKey(key);
 
-  key_presses[2] = getKey(key);
-  Serial.println("Key press");
+  for(int i = 0; i < passwordLength; i++)
+  {
+    Serial.print(key_presses[i]);
+  }
+  Serial.println();
+  delay(220);
 }
 
 int getKey(int key) {
-  if(key == 20)
+  if(key == 4)
   {
     return 1;
-  }else if(key == 22)
+  }else if(key == 3)
   {
     return 2;
-  }else if(key == 26)
+  }else if(key == 2)
   {
     return 3;
   }
@@ -104,7 +103,7 @@ int getKey(int key) {
 
 void resetPassword()
 {
-  for(int i = 0; i < 2; i++)
+  for(int i = 0; i < passwordLength; i++)
   {
     key_presses[i] = 0;
   }
