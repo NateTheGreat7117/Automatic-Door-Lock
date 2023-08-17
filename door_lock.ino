@@ -1,51 +1,61 @@
 #include <Servo.h>
+#include <Keypad.h>
+#include <avr/sleep.h>
 
-
+// Servo motor
 Servo servo;
-int servoPin = 5; // Change this to the GPIO pin you connected the servo's control signal wire
+int servoPin = 12;
 
-int key_presses[] = {0, 0, 0, 0, 0};
-int password[] = {0, 0, 0, 0, 0};
-int lock_password[] = {1, 1, 2, 2, 3};
-int unlock_password[] = {3, 2, 1, 1, 3};
+// Keypad
+const byte ROWS = 4; 
+const byte COLS = 4; 
+
+char hexaKeys[ROWS][COLS] = {
+  {'1', '2', '3', 'A'},
+  {'4', '5', '6', 'B'},
+  {'7', '8', '9', 'C'},
+  {'*', '0', '#', 'D'}
+};
+
+byte rowPins[ROWS] = {11, 10, 9, 8}; 
+byte colPins[COLS] = {7, 6, 5, 4}; 
+
+Keypad customKeypad = Keypad(makeKeymap(hexaKeys), rowPins, colPins, ROWS, COLS); 
+
+// Password
+char key_presses[] = {'0', '0', '0', '0', '0', '0'};
+char password[] = {'0', '0', '0', '0', '0', '0'};
+char lock_password[] = {'1', '9', '7', '3', '9', '7'};
+char unlock_password[] = {'0', '9', '0', '3', '1', '9'};
+bool locked = false;
 int passwordLength = sizeof(key_presses)/sizeof(key_presses[0]);
+int lock_angle = 10;
+int unlock_angle = 50;
+
+// Button
+const int buttonPin = 3;
 
 void setup() {
   servo.attach(servoPin);
-  servo.write(90);
+  servo.write(lock_angle);
 
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(4, INPUT_PULLUP);
-  pinMode(3, INPUT_PULLUP);
-  pinMode(2, INPUT_PULLUP);
-  Serial.begin(9600);
+  pinMode(buttonPin, INPUT_PULLUP);
+
+  attachInterrupt(digitalPinToInterrupt(buttonPin), moveServo, FALLING);
+
+  set_sleep_mode(SLEEP_MODE_IDLE);
+  sei();
+  // Serial.begin(9600);
 }
 
-// the loop function runs over and over again forever
 void loop() {
-  if(digitalRead(4) == LOW)
-  {
-    keyPress(4);
-  }if(digitalRead(3) == LOW)
-  {
-    keyPress(3);
-  }if(digitalRead(2) == LOW)
-  {
-    keyPress(2);
+  char customKey = customKeypad.getKey();
+  
+  if (customKey){
+    keyPress(customKey);
   }
 
-  if(checkPassword('l'))
-  {
-    Serial.print("lock");
-    resetPassword();
-    servo.write(30);
-  }
-  if(checkPassword('u'))
-  {
-    Serial.print("unlock");
-    resetPassword();
-    servo.write(90);
-  }
+  sleep_mode();
 }
 
 bool checkPassword(char p) {
@@ -72,33 +82,21 @@ bool checkPassword(char p) {
   return true;
 }
 
-void keyPress(int key) {
+void keyPress(char key) {
+  // Serial.println("Presses");
   for(int i = 0; i < passwordLength; i++)
   {
     key_presses[i] = key_presses[i+1];
   }
-  key_presses[passwordLength-1] = getKey(key);
+  key_presses[passwordLength-1] = key;
 
-  for(int i = 0; i < passwordLength; i++)
+  if(checkPassword('l') || checkPassword('u'))
   {
-    Serial.print(key_presses[i]);
+    resetPassword();
+    moveServo();
   }
-  Serial.println();
+
   delay(220);
-}
-
-int getKey(int key) {
-  if(key == 4)
-  {
-    return 1;
-  }else if(key == 3)
-  {
-    return 2;
-  }else if(key == 2)
-  {
-    return 3;
-  }
-  return 0;
 }
 
 void resetPassword()
@@ -107,4 +105,18 @@ void resetPassword()
   {
     key_presses[i] = 0;
   }
+}
+
+void moveServo()
+{
+  if(!locked)
+  {
+    servo.write(lock_angle);
+    locked = true;
+  }else
+  {
+    servo.write(unlock_angle);
+    locked = false;
+  }
+  delay(500);
 }
